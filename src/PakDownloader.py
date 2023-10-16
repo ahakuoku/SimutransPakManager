@@ -6,6 +6,7 @@ import os
 import io
 from enum import Enum
 import re
+import logging
 
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
@@ -28,10 +29,11 @@ MIME_TYPE_ZIP = "application/zip"
 MIME_TYPE_CAB = "application/vnd.ms-cab-compressed"
 
 def download_pakset(url: str, directory: str) -> None:
-    print(f"start downloading pakset from {url}")
+    logging.info(f"start downloading pakset from {url}")
     response = requests.get(url)
     response.raise_for_status()
-    print(f"download completed. extracting pakset to {directory}")
+    logging.info(f"download completed. extracting pakset to {directory}")
+    logging.debug(f"response headers: {response.headers}")
     data = response.content
     if response.headers['content-type'] == MIME_TYPE_ZIP:
         extract_zip_pakset(data, directory)
@@ -74,11 +76,15 @@ def extract_cab_pakset(data: bytes, directory: str) -> None:
     pass
 
 def download_and_extract_pak_files(url: str, directory: str) -> None:
+        logging.info(f"Downloading pak files from {url}")
         response = requests.get(url)
+        logging.debug(f"response headers: {response.headers}")
+        response.raise_for_status()
         data = response.content
         zip_file = zipfile.ZipFile(io.BytesIO(data))
         __copy_pak_files__(zip_file, directory)
         __copy_jatab_files__(zip_file, directory)
+        logging.info(f"Pak extraction succeeded for {url}")
         
 def __copy_pak_files__(zip_file: zipfile.ZipFile, directory: str) -> None:
     names = zip_file.namelist()
