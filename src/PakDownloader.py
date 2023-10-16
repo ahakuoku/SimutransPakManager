@@ -1,6 +1,6 @@
 import json
 import requests
-import cabarchive
+from cabarchive import CabArchive
 import zipfile
 import os
 import io
@@ -10,10 +10,10 @@ import re
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
 
-def download_local(directory: str, json_file_path: str) -> None:
+def download_local(directory: str, json_file_path: str, index: int) -> None:
     with open(json_file_path, "r") as f:
         pak_definitions = json.load(f)
-        definition = pak_definitions["paks"][0]
+        definition = pak_definitions["paks"][index]
         # download the pak first.
         download_pakset(definition["pakset_url"], directory)
         # process operations
@@ -24,22 +24,51 @@ def download_local(directory: str, json_file_path: str) -> None:
             pass
     pass
 
+MIME_TYPE_ZIP = "application/zip"
+MIME_TYPE_CAB = "application/vnd.ms-cab-compressed"
+
 def download_pakset(url: str, directory: str) -> None:
     print(f"start downloading pakset from {url}")
     response = requests.get(url)
+    response.raise_for_status()
     print(f"download completed. extracting pakset to {directory}")
     data = response.content
+    if response.headers['content-type'] == MIME_TYPE_ZIP:
+        extract_zip_pakset(data, directory)
+    elif response.headers['content-type'] == MIME_TYPE_CAB:
+        extract_cab_pakset(data, directory)
+    else:
+        # process as zip for unknown MIME type
+        extract_zip_pakset(data, directory)
+
+def extract_zip_pakset(data: bytes, directory: str) -> None:
     zip_file = zipfile.ZipFile(io.BytesIO(data))
     names = zip_file.namelist()
     for name in names:
         # skip directory definition
-        if name[-1] == "/":
+        if name[-1] == os.sep:
             continue
         path = os.path.join(directory, name)
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
             __make_directory_if_needed__(dirname)
         file_data = zip_file.read(name)
+        with open(path, "wb") as f:
+            f.write(file_data)
+    pass
+
+def extract_cab_pakset(data: bytes, directory: str) -> None:
+    archive = CabArchive(data)
+    for name in archive.keys():
+        # skip directory definition
+        file_name = name.replace("\\", os.sep)
+        if file_name[-1] == os.sep:
+            continue
+        path = os.path.join(directory, file_name)
+        dirname = os.path.dirname(path)
+        if not os.path.exists(dirname):
+            __make_directory_if_needed__(dirname)
+        file_data = archive[name].buf
         with open(path, "wb") as f:
             f.write(file_data)
     pass
@@ -56,7 +85,7 @@ def __copy_pak_files__(zip_file: zipfile.ZipFile, directory: str) -> None:
     for name in names:
         if not name.endswith(".pak"):
             continue
-        path = os.path.join(directory, name.split("/")[-1])
+        path = os.path.join(directory, name.split(os.sep)[-1])
         file_data = zip_file.read(name)
         with open(path, "wb") as f:
             f.write(file_data)
@@ -67,7 +96,7 @@ JATAB_REGEX = re.compile(r'^ja\..+\.tab$') # ja.***.tab
 def __copy_jatab_files__(zip_file: zipfile.ZipFile, pak_directory: str) -> None:
     names = zip_file.namelist()
     for name in names:
-        file_name = name.split("/")[-1]
+        file_name = name.split(os.sep)[-1]
         if file_name == "ja.tab":
             # TODO: Need to add its contents to ja.tab
             continue
