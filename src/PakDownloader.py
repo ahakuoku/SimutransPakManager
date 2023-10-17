@@ -10,6 +10,10 @@ import logging
 
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
+    DOWNLOAD_AND_OPERATIONS = "custom_operations_with_downloaded_file"
+
+class CustomOperationCommand(Enum):
+    COPY = "copy_file"
 
 def download_local(directory: str, json_file_path: str, index: int) -> None:
     with open(json_file_path, "r") as f:
@@ -22,7 +26,8 @@ def download_local(directory: str, json_file_path: str, index: int) -> None:
         for operation in definition["operations"]:
             if operation["command"] == OperationCommand.EXTRACT_ALL_PAK_FILES.value:
                 download_and_extract_pak_files(operation["url"], pakset_directory)
-            pass
+            elif operation["command"] == OperationCommand.DOWNLOAD_AND_OPERATIONS.value:
+                download_and_do_custom_operations(operation["url"], pakset_directory, operation["operations"])
     pass
 
 MIME_TYPE_ZIP = "application/zip"
@@ -85,7 +90,7 @@ def download_and_extract_pak_files(url: str, directory: str) -> None:
         __copy_pak_files__(zip_file, directory)
         __copy_jatab_files__(zip_file, directory)
         logging.info(f"Pak extraction succeeded for {url}")
-        
+
 def __copy_pak_files__(zip_file: zipfile.ZipFile, directory: str) -> None:
     names = zip_file.namelist()
     for name in names:
@@ -114,6 +119,25 @@ def __copy_jatab_files__(zip_file: zipfile.ZipFile, pak_directory: str) -> None:
         with open(path, "wb") as f:
             f.write(file_data)
     pass
+
+def download_and_do_custom_operations(url: str, pakset_directory: str, operations: list[dict]) -> None:
+    logging.info(f"Downloading pak files from {url}")
+    response = requests.get(url)
+    response.raise_for_status()
+    logging.info(f"Downloading succeeded.")
+    data = response.content
+    zip_file = zipfile.ZipFile(io.BytesIO(data))
+    for operation in operations:
+        __process_custom_operation__(operation, zip_file, pakset_directory)
+
+def __process_custom_operation__(operation: dict, zip_file: zipfile.ZipFile, pakset_directory: str) -> None:
+    if operation["command"] == CustomOperationCommand.COPY.value:
+        logging.info(f"copying file from {operation['source_path']} to {operation['destination']}")
+        source_path = operation["source_path"]
+        file_name = source_path.split(os.sep)[-1]
+        destination = os.path.join(pakset_directory, operation["destination"])
+        with open(os.path.join(destination, file_name), "wb") as f:
+            f.write(zip_file.read(source_path))
 
 def __make_directory_if_needed__(directory: str) -> None:
     parent = os.path.dirname(directory)

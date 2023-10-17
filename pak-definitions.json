@@ -13,7 +13,14 @@
             "pakset_url": "http://pak128.jpn.org/souko/pak128.japan.120.0.cab",
             "pakset_directory_name": "pak128.japan",
             "operations": [
-                {"command": "extract_all_pak_files", "url": "https://atelier.kasu.me/simutrans/mk_metro.zip"}
+                {"command": "extract_all_pak_files", "url": "https://atelier.kasu.me/simutrans/mk_metro.zip"},
+                {
+                    "command": "custom_operations_with_downloaded_file", 
+                    "url": "https://github.com/ahakuoku/AHNS_toolbar/releases/download/1.2.0/AHNS_toolbar_1.2.0.zip",
+                    "operations": [
+                        {"command": "copy_file", "source_path": "pak/config/menuconf.tab", "destination": "config/" }
+                    ]
+                }
             ]
         }
     ]
