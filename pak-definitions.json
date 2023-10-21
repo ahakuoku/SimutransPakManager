@@ -20,7 +20,8 @@
                     "operations": [
                         {"command": "copy_file", "source_path": "pak/config/menuconf.tab", "destination": "config/" }
                     ]
-                }
+                },
+                {"command": "remove_file", "path": "bridge.hashi090.pak"}
             ]
         }
     ]

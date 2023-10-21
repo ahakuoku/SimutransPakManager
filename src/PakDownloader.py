@@ -11,6 +11,7 @@ import logging
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
     DOWNLOAD_AND_OPERATIONS = "custom_operations_with_downloaded_file"
+    REMOVE_FILE = "remove_file"
 
 class CustomOperationCommand(Enum):
     COPY = "copy_file"
@@ -28,6 +29,8 @@ def download_local(directory: str, json_file_path: str, index: int) -> None:
                 download_and_extract_pak_files(operation["url"], pakset_directory)
             elif operation["command"] == OperationCommand.DOWNLOAD_AND_OPERATIONS.value:
                 download_and_do_custom_operations(operation["url"], pakset_directory, operation["operations"])
+            elif operation["command"] == OperationCommand.REMOVE_FILE.value:
+                remove_file(operation["path"], pakset_directory)
     pass
 
 MIME_TYPE_ZIP = "application/zip"
@@ -145,4 +148,8 @@ def __make_directory_if_needed__(directory: str) -> None:
         __make_directory_if_needed__(parent)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    pass
+
+def remove_file(path_in_pakset: str, pakset_directory: str) -> None:
+    logging.info(f"removing file {path_in_pakset}")
+    path = os.path.join(pakset_directory, path_in_pakset)
+    os.remove(path)
