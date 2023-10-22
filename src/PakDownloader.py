@@ -7,6 +7,7 @@ import io
 from enum import Enum
 import re
 import logging
+from typing import Any, Callable
 
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
@@ -19,28 +20,48 @@ class CustomOperationCommand(Enum):
 def download_local(directory: str, json_file_path: str, index: int) -> None:
     with open(json_file_path, "r") as f:
         pak_definitions = json.load(f)
-        definition = pak_definitions["paks"][index]
-        # download the pak first.
-        download_pakset(definition["pakset_url"], directory)
-        # process operations
-        pakset_directory = os.path.join(directory, definition["pakset_directory_name"])
-        for operation in definition["operations"]:
-            if operation["command"] == OperationCommand.EXTRACT_ALL_PAK_FILES.value:
-                download_and_extract_pak_files(operation["url"], pakset_directory)
-            elif operation["command"] == OperationCommand.DOWNLOAD_AND_OPERATIONS.value:
-                download_and_do_custom_operations(operation["url"], pakset_directory, operation["operations"])
-            elif operation["command"] == OperationCommand.REMOVE_FILE.value:
-                remove_file(operation["path"], pakset_directory)
+        download_from_definition(
+            directory, 
+            pak_definitions, 
+            index,
+            lambda message: logging.info(message),
+            lambda progress_percent: logging.info(f"progress: {progress_percent}%")
+        )
     pass
+
+def download_from_definition(
+        directory: str, 
+        definition_json: Any, 
+        index: int,
+        show_message: Callable[[str], None],
+        report_progress_percent: Callable[[int], None]
+    ) -> None:
+    definition = definition_json["paks"][index]
+    # download the pak first.
+    download_pakset(definition["pakset_url"], directory, show_message, report_progress_percent)
+    # process operations
+    pakset_directory = os.path.join(directory, definition["pakset_directory_name"])
+    for operation in definition["operations"]:
+        if operation["command"] == OperationCommand.EXTRACT_ALL_PAK_FILES.value:
+            download_and_extract_pak_files(operation["url"], pakset_directory, show_message, report_progress_percent)
+        elif operation["command"] == OperationCommand.DOWNLOAD_AND_OPERATIONS.value:
+            download_and_do_custom_operations(operation["url"], pakset_directory, operation["operations"])
+        elif operation["command"] == OperationCommand.REMOVE_FILE.value:
+            remove_file(operation["path"], pakset_directory)
 
 MIME_TYPE_ZIP = "application/zip"
 MIME_TYPE_CAB = "application/vnd.ms-cab-compressed"
 
-def download_pakset(url: str, directory: str) -> None:
-    logging.info(f"start downloading pakset from {url}")
+def download_pakset(
+        url: str, 
+        directory: str, 
+        show_message: Callable[[str], None], 
+        report_progress_percent: Callable[[int], None]
+    ) -> None:
+    show_message(f"start downloading pakset from {url}")
     response = requests.get(url)
     response.raise_for_status()
-    logging.info(f"download completed. extracting pakset to {directory}")
+    show_message(f"download completed. extracting pakset to {directory}")
     logging.debug(f"response headers: {response.headers}")
     data = response.content
     if response.headers['content-type'] == MIME_TYPE_ZIP:
@@ -83,8 +104,13 @@ def extract_cab_pakset(data: bytes, directory: str) -> None:
             f.write(file_data)
     pass
 
-def download_and_extract_pak_files(url: str, directory: str) -> None:
-        logging.info(f"Downloading pak files from {url}")
+def download_and_extract_pak_files(
+        url: str, 
+        directory: str,
+        show_message: Callable[[str], None], 
+        report_progress_percent: Callable[[int], None]
+    ) -> None:
+        show_message(f"Downloading pak files from {url}")
         response = requests.get(url)
         logging.debug(f"response headers: {response.headers}")
         response.raise_for_status()
@@ -92,7 +118,7 @@ def download_and_extract_pak_files(url: str, directory: str) -> None:
         zip_file = zipfile.ZipFile(io.BytesIO(data))
         __copy_pak_files__(zip_file, directory)
         __copy_jatab_files__(zip_file, directory)
-        logging.info(f"Pak extraction succeeded for {url}")
+        show_message(f"Pak extraction succeeded for {url}")
 
 def __copy_pak_files__(zip_file: zipfile.ZipFile, directory: str) -> None:
     names = zip_file.namelist()
