@@ -77,8 +77,10 @@ def extract_zip_pakset(data: bytes, directory: str) -> None:
     names = zip_file.namelist()
     for name in names:
         # skip directory definition
-        if name[-1] == os.sep:
+        # The path separator of the zip file is always '/', even on Windows.
+        if name[-1] == '/':
             continue
+        # mixing os.sep and '/' separator works fine on Windows.
         path = os.path.join(directory, name)
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
@@ -125,7 +127,8 @@ def __copy_pak_files__(zip_file: zipfile.ZipFile, directory: str) -> None:
     for name in names:
         if not name.endswith(".pak"):
             continue
-        path = os.path.join(directory, name.split(os.sep)[-1])
+        # The path separator of the zip file is always '/'
+        path = os.path.join(directory, name.split('/')[-1])
         file_data = zip_file.read(name)
         with open(path, "wb") as f:
             f.write(file_data)
@@ -136,7 +139,8 @@ JATAB_REGEX = re.compile(r'^ja\..+\.tab$') # ja.***.tab
 def __copy_jatab_files__(zip_file: zipfile.ZipFile, pak_directory: str) -> None:
     names = zip_file.namelist()
     for name in names:
-        file_name = name.split(os.sep)[-1]
+        # The path separator of the zip file is always '/', even on Windows.
+        file_name = name.split('/')[-1]
         if file_name == "ja.tab":
             # TODO: Need to add its contents to ja.tab
             continue
@@ -163,7 +167,8 @@ def __process_custom_operation__(operation: dict, zip_file: zipfile.ZipFile, pak
     if operation["command"] == CustomOperationCommand.COPY.value:
         logging.info(f"copying file from {operation['source_path']} to {operation['destination']}")
         source_path = operation["source_path"]
-        file_name = source_path.split(os.sep)[-1]
+        # The file separator in the definition json file is always '/'.
+        file_name = source_path.split('/')[-1]
         destination = os.path.join(pakset_directory, operation["destination"])
         with open(os.path.join(destination, file_name), "wb") as f:
             f.write(zip_file.read(source_path))
