@@ -3,8 +3,8 @@ from tkinter import ttk
 from tkinter import messagebox
 from gui import SelectDefinitionSourceView, SelectItemView, DownloadProgressView, FinishedView
 import PakDownloader
-import logging
-from typing import Any
+import logging, sys, threading
+from typing import Any, Callable
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,6 +23,7 @@ def on_closing():
     if messagebox.askokcancel("終了", "本当に終了しますか？"):
         # ウィンドウを閉じる
         window.destroy()
+        sys.exit(0)
 
 # ウィンドウが閉じられたときにon_closing関数を呼び出すように設定
 window.protocol("WM_DELETE_WINDOW", on_closing)
@@ -38,13 +39,37 @@ def start_download_and_show_progress_view(
     ) -> None:
     progress_view = DownloadProgressView.DownloadProgressView(window)
     progress_view.frame.pack()
+    # Since the download is with the thread blocking api, we need to run it in a separate thread.
+    t = threading.Thread(
+        target=start_pak_download, 
+        args=(
+            window, 
+            progress_view, 
+            destination_path, 
+            definition_json, 
+            selected_index, 
+            progress_view.add_message, 
+            progress_view.update_progress
+            )
+        )
+    t.start()
+    
+def start_pak_download(
+        window: tk.Tk,
+        progress_view: DownloadProgressView.DownloadProgressView,
+        directory: str,
+        definition_json: Any,
+        index: int,
+        show_message: Callable[[str], None],
+        report_progress_percent: Callable[[int], None]
+    ) -> None:
     PakDownloader.download_from_definition(
-        directory=destination_path, 
-        definition_json=definition_json, 
-        index=selected_index, 
-        show_message=progress_view.add_message, 
-        report_progress_percent=progress_view.update_progress
-    )
+            directory=directory, 
+            definition_json=definition_json, 
+            index=index, 
+            show_message=show_message, 
+            report_progress_percent=report_progress_percent
+        )
     progress_view.frame.pack_forget()
     finished_view = FinishedView.FinishedView(window)
     finished_view.frame.pack()
