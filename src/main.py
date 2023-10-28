@@ -5,6 +5,7 @@ from gui import SelectDefinitionSourceView, SelectItemView, DownloadProgressView
 import PakDownloader
 import logging, sys, threading
 from typing import Any, Callable
+import traceback
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,15 +64,21 @@ def start_pak_download(
         show_message: Callable[[str], None],
         report_progress_percent: Callable[[int], None]
     ) -> None:
-    PakDownloader.download_from_definition(
-            directory=directory, 
-            definition_json=definition_json, 
-            index=index, 
-            show_message=show_message, 
-            report_progress_percent=report_progress_percent
-        )
+    error_description: str | None = None
+    try:
+        PakDownloader.download_from_definition(
+                directory=directory, 
+                definition_json=definition_json, 
+                index=index, 
+                show_message=show_message, 
+                report_progress_percent=report_progress_percent
+            )
+    except Exception as e:
+        error_description = str(e)
+        logging.error(traceback.format_exc())
+    progress_log = progress_view.text_box.get("1.0", tk.END)
     progress_view.frame.pack_forget()
-    finished_view = FinishedView.FinishedView(window)
+    finished_view = FinishedView.FinishedView(window, progress_log, error_description)
     finished_view.frame.pack()
 
 # 各ページのフレームオブジェクトを作成
