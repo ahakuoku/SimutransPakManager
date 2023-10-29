@@ -29,8 +29,10 @@ jobs:
         run: |
           pyinstaller --onefile --name SimutransPakManager src/main.py
           chmod +x dist/SimutransPakManager
+      - name: Zip binary
+        run: zip -jX dist/SimutransPakManager.zip dist/SimutransPakManager
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: SimutransPakManager-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/SimutransPakManager*
+          path: dist/SimutransPakManager.zip
