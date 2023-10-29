@@ -30,9 +30,14 @@ jobs:
           pyinstaller --onefile --name SimutransPakManager src/main.py
           chmod +x dist/SimutransPakManager
       - name: Zip binary
-        run: zip -jX dist/SimutransPakManager.zip dist/SimutransPakManager
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then # for mac
+            zip -jX SimutransPakManager.zip dist/SimutransPakManager
+          else # for windows
+            7z a SimutransPakManager.zip dist/SimutransPakManager* # use 7zip tool
+          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: SimutransPakManager-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/SimutransPakManager.zip
+          path: SimutransPakManager.zip
