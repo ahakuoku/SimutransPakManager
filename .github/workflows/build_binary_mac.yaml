@@ -1,5 +1,5 @@
 # GitHub actions workflow for SimutransPakManager
-name: Build binaries
+name: Build mac binaries
 on:
   push:
     tags:
@@ -9,12 +9,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
         arch: [x64, arm64]
-        exclude:
-          - os: windows-latest
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -30,14 +26,9 @@ jobs:
           pyinstaller --onefile --name SimutransPakManager src/main.py
           chmod +x dist/SimutransPakManager
       - name: Zip binary
-        run: |
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then # for mac
-            zip -jX SimutransPakManager.zip dist/SimutransPakManager
-          else # for windows
-            7z a SimutransPakManager.zip dist/SimutransPakManager* # use 7zip tool
-          fi
+        run: zip -jX SimutransPakManager.zip dist/SimutransPakManager
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: SimutransPakManager-${{ matrix.os }}-${{ matrix.arch }}
+          name: SimutransPakManager-macos-${{ matrix.arch }}
           path: SimutransPakManager.zip

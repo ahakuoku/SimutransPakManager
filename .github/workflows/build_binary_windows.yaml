@@ -1,0 +1,27 @@
+# GitHub actions workflow for SimutransPakManager
+name: Build Windows binary
+on:
+  push:
+    tags:
+      - v*
+      - ci/*
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11.6
+          architecture: x64
+      - name: Install dependencies
+        run: pip install requests cabarchive pyinstaller
+      - name: Build binary
+        run: pyinstaller --onefile --name SimutransPakManager src/main.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: SimutransPakManager-windows-x64
+          path: dist/SimutransPakManager*
