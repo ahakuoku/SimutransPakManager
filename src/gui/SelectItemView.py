@@ -27,7 +27,7 @@ class SelectItemView:
             radio.pack()
 
         # 次へボタンオブジェクトを作成
-        self.button = tk.Button(self.frame, text="次へ", command=self.on_next_button_pressed)
+        self.button = tk.Button(self.frame, text="ダウンロード先を選択", command=self.on_next_button_pressed)
         # 次へボタンオブジェクトを配置
         self.button.pack(pady=10)
 
