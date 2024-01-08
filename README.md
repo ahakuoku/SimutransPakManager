@@ -4,7 +4,7 @@ pak構築作業を自動化するプログラムです。
 # 実行方法
 ## 前提
 - python version 3.11.6
-- `pip install requests cabarchive`
+- `pip install requests cabarchive beautifulsoup4`
 
 ## 実行
 コマンドライン実行

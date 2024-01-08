@@ -8,6 +8,7 @@ from enum import Enum
 import re
 import logging
 from typing import Any, Callable
+from bs4 import BeautifulSoup
 
 class OperationCommand(Enum):
     EXTRACT_ALL_PAK_FILES = "extract_all_pak_files"
@@ -59,10 +60,8 @@ def download_pakset(
         report_progress_percent: Callable[[int], None]
     ) -> None:
     show_message(f"start downloading pakset from {url}")
-    response = requests.get(url)
-    response.raise_for_status()
+    response = __download_from_url__(url)
     show_message(f"download completed. extracting pakset to {directory}")
-    logging.debug(f"response headers: {response.headers}")
     data = response.content
     if response.headers['content-type'] == MIME_TYPE_ZIP:
         extract_zip_pakset(data, directory)
@@ -113,9 +112,7 @@ def download_and_extract_pak_files(
         report_progress_percent: Callable[[int], None]
     ) -> None:
         show_message(f"Downloading pak files from {url}")
-        response = requests.get(url)
-        logging.debug(f"response headers: {response.headers}")
-        response.raise_for_status()
+        response = __download_from_url__(url)
         data = response.content
         zip_file = zipfile.ZipFile(io.BytesIO(data))
         __copy_pak_files__(zip_file, directory)
@@ -155,8 +152,7 @@ def __copy_jatab_files__(zip_file: zipfile.ZipFile, pak_directory: str) -> None:
 
 def download_and_do_custom_operations(url: str, pakset_directory: str, operations: list[dict]) -> None:
     logging.info(f"Downloading pak files from {url}")
-    response = requests.get(url)
-    response.raise_for_status()
+    response = __download_from_url__(url)
     logging.info(f"Downloading succeeded.")
     data = response.content
     zip_file = zipfile.ZipFile(io.BytesIO(data))
@@ -179,6 +175,31 @@ def __make_directory_if_needed__(directory: str) -> None:
         __make_directory_if_needed__(parent)
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+# Do a get request for the given url. It raises an exception if the response is an error.
+def __download_from_url__(url: str) -> requests.Response:
+    if "getuploader.com" in url:
+        return __download_from_getuploader__(url)
+    response = requests.get(url)
+    logging.debug(f"response headers: {response.headers}")
+    response.raise_for_status()
+    return response
+
+# getuploader.com requests us to do a special operation to download the file.
+def __download_from_getuploader__(url: str) -> requests.Response:
+    response = requests.get(url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'html.parser')
+    # extract data to compose download url
+    token = soup.find('input', attrs={'name': 'token', 'type': 'hidden'})['value']
+    fileName = soup.find('meta', attrs={'name': 'keywords'})['content'].split(',')[0]
+    userName = soup.find('a', attrs={'class': 'navbar-brand'})['href'].split('/')[-2]
+    index = url.split('/')[-1]
+    # download actual file
+    downloadUrl = f'https://downloadx.getuploader.com/g/{token}/{userName}/{index}/{fileName}'
+    response = requests.get(downloadUrl)
+    response.raise_for_status()
+    return response
 
 def remove_file(path_in_pakset: str, pakset_directory: str) -> None:
     logging.info(f"removing file {path_in_pakset}")

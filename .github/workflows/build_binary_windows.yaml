@@ -17,7 +17,7 @@ jobs:
           python-version: 3.11.6
           architecture: x64
       - name: Install dependencies
-        run: pip install requests cabarchive pyinstaller
+        run: pip install requests cabarchive beautifulsoup4 pyinstaller
       - name: Build binary
         run: pyinstaller --onefile --name SimutransPakManager src/main.py
       - name: Upload artifact
