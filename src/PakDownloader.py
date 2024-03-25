@@ -52,6 +52,7 @@ def download_from_definition(
 
 MIME_TYPE_ZIP = "application/zip"
 MIME_TYPE_CAB = "application/vnd.ms-cab-compressed"
+MIME_TYPE_7Z = "application/x-7z-compressed"
 
 def download_pakset(
         url: str, 
@@ -67,6 +68,8 @@ def download_pakset(
         extract_zip_pakset(data, directory)
     elif response.headers['content-type'] == MIME_TYPE_CAB:
         extract_cab_pakset(data, directory)
+    elif response.headers['content-type'] == MIME_TYPE_7Z:
+        extract_7z_pakset(data, directory)
     else:
         # process as zip for unknown MIME type
         extract_zip_pakset(data, directory)
@@ -101,6 +104,22 @@ def extract_cab_pakset(data: bytes, directory: str) -> None:
         if not os.path.exists(dirname):
             __make_directory_if_needed__(dirname)
         file_data = archive[name].buf
+        with open(path, "wb") as f:
+            f.write(file_data)
+    pass
+
+def extract_7z_pakset(data: bytes, directory: str) -> None:
+    sevenzip_file = CabArchive(data)
+    for name in sevenzip_file.keys():
+        # skip directory definition
+        file_name = name.replace("\\", os.sep)
+        if file_name[-1] == os.sep:
+            continue
+        path = os.path.join(directory, file_name)
+        dirname = os.path.dirname(path)
+        if not os.path.exists(dirname):
+            __make_directory_if_needed__(dirname)
+        file_data = sevenzip_file[name].buf
         with open(path, "wb") as f:
             f.write(file_data)
     pass
